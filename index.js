@@ -73,6 +73,55 @@ async function run() {
 
 
     
+  //   user related apis
+  app.get("/foods-email/:email", async (req, res) => {
+    const query = { email: req.params.email };
+    const cursor = foodCollection.find(query);
+    const data = await cursor.toArray();
+    res.send(data);
+  });
+
+
+     // my list delete
+     app.delete("/foods/:id", async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await foodCollection.deleteOne(query);
+        res.send(result);
+      });
+
+ // update code
+ app.get("/foods/:id", async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await foodCollection.findOne(query);
+    res.send(result);
+  });
+   
+ // update put
+ app.put("/foods/:id", async (req, res) => {
+    const id = req.params.id;
+    const filter = { _id: new ObjectId(id) };
+    const options = { upsert: true };
+    const updatedFoods = req.body;
+    
+    const foods = {
+      $set: {
+        photo: updatedFoods.photo,
+        status: updatedFoods.status,
+        name: updatedFoods.name,
+        quantity: updatedFoods.quantity,
+        location: updatedFoods.location,
+        date: updatedFoods.date,
+        notes: updatedFoods.notes,
+       
+      },
+    };
+    const result = await foodCollection.updateOne(filter, foods, options);
+    res.send(result);
+  });
+
+
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });

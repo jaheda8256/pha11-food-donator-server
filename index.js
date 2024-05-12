@@ -123,6 +123,18 @@ async function run() {
 
 
 
+// Route to fetch featured foods sorted by quantity
+app.get('/featured-foods', async (req, res) => {
+    try {
+      const featuredFoods = await foodCollection.find().sort({ quantity: -1 }).limit(6).toArray();
+      res.json(featuredFoods);
+    } catch (error) {
+      console.error('Error fetching featured foods:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     console.log(

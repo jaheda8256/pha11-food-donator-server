@@ -29,21 +29,22 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const foodCollection = client.db("foodsDB").collection("foods");
+    const foodRequestCollection = client.db("foodsDB").collection("foodsRequest");
 
     // auth related api
     app.post("/jwt", async (req, res) => {
       const user = req.body;
       console.log("user for token", user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1h",
+        expiresIn: "7d",
       });
 
       res
         //   .cookie("token", token, cookieOption)
         .cookie("token", token, {
           httpOnly: true,
-          secure: false,
-          // sameSite: 'none'
+          secure: process.env.NODE_ENV === "production"? true : false,
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         })
         .send({ success: true });
     });
@@ -80,6 +81,48 @@ async function run() {
     const data = await cursor.toArray();
     res.send(data);
   });
+
+
+
+
+// request
+app.post("/foods-request", async (req, res) => {
+  try {
+    
+    const { email, foodId, displayName,  location, date,deadline} = req.body;
+
+    // Update the food status to "requested"
+    await foodCollection.updateOne(
+      { _id: new ObjectId(foodId) },
+      { $set: { status: "requested" } }
+    );
+
+    // Add the food to the user's requested foods
+    await foodRequestCollection.insertOne({ foodId, email, displayName,  location, date,deadline});
+
+    res.status(200).json({ message: "Food requested successfully" });
+  } catch (error) {
+    console.error("Error requesting food:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+app.get("/request-email/:email", async (req, res) => {
+    try {
+        const email = req.params.email;
+        const foodRequests = await foodRequestCollection.find({ email }).toArray();
+        res.status(200).json(foodRequests);
+    } catch (error) {
+        console.error("Error fetching food requests:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+
+
+
+
 
 
      // my list delete
@@ -135,6 +178,13 @@ app.get('/featured-foods', async (req, res) => {
   });
 
   
+
+
+
+
+
+
+
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     console.log(

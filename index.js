@@ -32,30 +32,27 @@ const client = new MongoClient(uri, {
   },
 });
 
-const logger = async (req, res, next) => {
-  console.log("called", req.host, req.originalUrl);
-  next();
-};
 
-//   const verifyToken = async (req, res, next) => {
-//     const token = req.cookies?.token;
-//     console.log("value of token in middleware", token);
-//     if (!token) {
-//       return res.status(401).send({ message: "not authorized" });
-//     }
 
-//     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-//       // err
-//       if (err) {
-//         console.log(err);
-//         return res.status(401).send({ message: "unauthorized" });
-//       }
-//       console.log("value in the token", decoded);
-//       req.user = decoded;
-//       next();
-//       // if token is valid then it would be decoded
-//     });
-//   };
+  const verifyToken = async (req, res, next) => {
+    const token = req.cookies?.token;
+    console.log("value of token in middleware", token);
+    if (!token) {
+      return res.status(401).send({ message: "not authorized" });
+    }
+
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+      // err
+      if (err) {
+        console.log(err);
+        return res.status(401).send({ message: "unauthorized" });
+      }
+      console.log("value in the token", decoded);
+      req.user = decoded;
+      next();
+      // if token is valid then it would be decoded
+    });
+  };
 
 const cookieOption = {
   httpOnly: true,
@@ -90,12 +87,20 @@ async function run() {
     });
 
 
-    
-    app.get("/foods", logger, async (req, res) => {
-      const cursor = foodCollection.find();
+
+
+    app.get("/foods", async (req, res) => {
+
+
+      const cursor = foodCollection.find({ status: "available" });
+      cursor.sort({ date: -1 });
       const result = await cursor.toArray();
+      console.log(result);
       res.send(result);
+
     });
+
+
 
     //   details
     app.get("/foods/:id", async (req, res) => {
@@ -112,11 +117,16 @@ async function run() {
       res.send(result);
     });
 
+    
     //   user related apis
-    app.get("/foods-email/:email",logger, async (req, res) => {
+    app.get("/foods-email/:email",verifyToken, async (req, res) => {
       console.log("tok tok token", req.cookies.token);
       console.log("user in the valid token", req.user);
 
+      if (req.user.email !== req.params.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+    
       const query = { email: req.params.email };
       const cursor = foodCollection.find(query);
       const data = await cursor.toArray();
@@ -125,6 +135,9 @@ async function run() {
 
     // request
     app.post("/foods-request", async (req, res) => {
+
+        console.log("tok tok token", req.cookies.token);
+        console.log("user in the valid token", req.user);
       try {
         const { email, foodId, displayName, location, date, deadline } =
           req.body;
@@ -152,7 +165,14 @@ async function run() {
       }
     });
 
-    app.get("/request-email/:email", logger, async (req, res) => {
+    app.get("/request-email/:email",verifyToken, async (req, res) => {
+
+        console.log("tok tok token request", req.cookies.token);
+      console.log("user in the valid token", req.user);
+
+      if (req.user.email !== req.params.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
       try {
         const email = req.params.email;
         const foodRequests = await foodRequestCollection
@@ -202,6 +222,9 @@ async function run() {
       const result = await foodCollection.updateOne(filter, foods, options);
       res.send(result);
     });
+
+
+
 
     // Route to fetch featured foods sorted by quantity
     app.get("/featured-foods", async (req, res) => {

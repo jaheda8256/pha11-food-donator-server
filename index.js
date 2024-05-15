@@ -91,14 +91,39 @@ async function run() {
 
     app.get("/foods", async (req, res) => {
 
-
       const cursor = foodCollection.find({ status: "available" });
+    //   cursor.sort({ date: -1 });
+      const result = await cursor.toArray();
+      console.log(result);
+      res.send(result);
+
+    });
+
+
+
+
+ app.get("/foods-sort", async (req, res) => {
+console.log('info', req.query.search)
+const filter = req.query;
+console.log(filter);
+const query = {
+     status: "available" ,
+    name: {$regex: filter.search, $options: 'i'}
+    };
+const options = {
+    sort: {
+        date: filter.sort === 'asc' ? 1: -1
+    }
+}
+      const cursor = foodCollection.find(query, options);
       cursor.sort({ date: -1 });
       const result = await cursor.toArray();
       console.log(result);
       res.send(result);
 
     });
+
+
 
 
 
